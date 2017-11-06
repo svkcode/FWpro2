@@ -271,7 +271,8 @@ BOOL cf_savebin(vector<string> params, SymbolTable &sTable, State &state)
 		return FALSE;
 	}
 	if (GetLastError() == ERROR_ALREADY_EXISTS) log("Overwriting existing file %s", saveFile);
-	if (!WriteFile(hFile, data, bin->length(), NULL, NULL))
+	DWORD nBytesWritten;
+	if (!WriteFile(hFile, data, bin->length(), &nBytesWritten, NULL))
 	{
 		logE("Unable to write to file %s", saveFile);
 		return FALSE;

@@ -84,12 +84,6 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="small.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="FWpro2.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
     <Image Include="toolbar\open.ico">
       <Filter>Resource Files\toolbar</Filter>
     </Image>

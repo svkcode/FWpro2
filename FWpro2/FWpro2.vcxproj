@@ -170,9 +170,7 @@
     <ResourceCompile Include="FWpro2.rc" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="FWpro2.ico" />
     <Image Include="icon.ico" />
-    <Image Include="small.ico" />
     <Image Include="toolbar\loop.ico" />
     <Image Include="toolbar\open.ico" />
     <Image Include="toolbar\pause.ico" />

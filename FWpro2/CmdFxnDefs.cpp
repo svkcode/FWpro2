@@ -229,18 +229,28 @@ BOOL cf_replacebin(vector<string> params, SymbolTable &sTable, State &state)
 
 BOOL cf_crc16bin(vector<string> params, SymbolTable &sTable, State &state)
 {
-	CHECK_ARG_COUNT(4);
+	int startAddr;
+	int endAddr;
+	// start & end addresses are optional arguments
+	if (params.size() > 3)
+	{
+		CHECK_ARG_COUNT(4);
+		GETNUMBER(params[3], startAddr);
+		GETNUMBER(params[4], endAddr);
+	}
+	else
+	{
+		CHECK_ARG_COUNT(2);
+		startAddr = 0;
+		endAddr = UINT_MAX;
+	}
 	// destination
 	int *crc = (int *)sTable.newSymbol(params[1], DT_NUMBER);
 	// source file
 	Binary *bin;
 	GETBINARY(params[2], bin);
-	// start address
-	int startAddr;
-	GETNUMBER(params[3], startAddr);
-	// end address
-	int endAddr;
-	GETNUMBER(params[4], endAddr);
+	// start address	
+	// end address		
 
 	log("Calculating crc16 on %s", params[2].c_str());
 	*crc = bin->crc16(startAddr, endAddr);

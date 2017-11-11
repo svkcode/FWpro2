@@ -5,6 +5,7 @@
 #include "Binary.h"
 #include "Log.h"
 #include "RunProcess.h"
+#include "CSVParser.h"
 using namespace std;
 
 // Macros
@@ -460,3 +461,62 @@ BOOL cf_randtable(vector<string> params, SymbolTable &sTable, State &state)
 	return TRUE;
 }
 
+BOOL cf_add2csv(vector<string> params, SymbolTable &sTable, State &state)
+{
+	// check arg count
+	if (params.size() < 2 || params.size() % 2 != 0) { log("Incorrect no of args for: %s", params[0].c_str()); return FALSE; }
+	if (params.size() == 2) { log("There must be at least one key/value pair for: %s", params[0].c_str()); return FALSE; }
+	// source file
+	char *file;
+	GETCHARPTR(params[1], file, DT_STRING);
+
+	// consolidate key/value pairs
+	vector<pair<string, string>> kvp;
+	int num; // reqd by getunknown
+	int dataType;
+	char *data;
+	for (UINT i = 2; i < params.size(); i += 2)
+	{	
+		dataType = DT_NUMBER | DT_STRING | DT_BYTEARRAY;
+		GETUNKNOWN(params[i + 1], data, num, dataType);
+		kvp.push_back({ params[i], sTable.toString(data, dataType) });
+	}
+	
+	vector<string> temp;
+	// find if key/value already exists
+	if (!findCSV(file, kvp[0].first, kvp[0].second, temp)) return FALSE;
+	if (!temp.empty()) 
+	{ 
+		log("%s : %s already exists in %s", kvp[0].first.c_str(), kvp[0].second.c_str(), file);
+		return FALSE;
+	}
+	if (!appendCSV(file, kvp)) return FALSE;
+	log("Added values to %s", file);
+	return TRUE;	
+}
+
+BOOL cf_replacecsv(vector<string> params, SymbolTable &sTable, State &state)
+{
+	// check arg count
+	if (params.size() < 2 || params.size() % 2 != 0) { log("Incorrect no of args for: %s", params[0].c_str()); return FALSE; }
+	if (params.size() == 2) { log("There must be at least one key/value pair for: %s", params[0].c_str()); return FALSE; }
+	// source file
+	char *file;
+	GETCHARPTR(params[1], file, DT_STRING);
+
+	// consolidate key/value pairs
+	vector<pair<string, string>> kvp;
+	int num; // reqd by getunknown
+	int dataType;
+	char *data;
+	for (UINT i = 2; i < params.size(); i += 2)
+	{
+		dataType = DT_NUMBER | DT_STRING | DT_BYTEARRAY;
+		GETUNKNOWN(params[i + 1], data, num, dataType);
+		kvp.push_back({ params[i], sTable.toString(data, dataType) });
+	}
+
+	if (!replaceCSV(file, kvp[0].first, kvp[0].second, kvp)) return FALSE;
+	log("Added values to %s", file);
+	return TRUE;
+}

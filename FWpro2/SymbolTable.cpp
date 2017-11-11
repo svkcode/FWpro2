@@ -143,3 +143,33 @@ int SymbolTable::getLength(void *sym, int dataType)
 	}
 	return length;
 }
+
+string SymbolTable::toString(void *sym, int dataType)
+{
+	if (sym == NULL) return NULL;
+	string str;
+	switch (dataType)
+	{
+	case DT_NUMBER:
+		str = to_string(*((int *)sym));
+		break;
+	case DT_STRING:
+		str = string((char *)sym);
+		break;
+	case DT_BYTEARRAY:
+	{
+		int length = getLength(sym, DT_BYTEARRAY);
+		for (int j = 0; j < length; j++)
+		{
+			char ch[3];
+			sprintf_s(ch, 3, "%02x", ((char *)sym)[j] & 0xFF);
+			str.append(ch);
+		}
+		break;
+	}
+	default:
+		// shouldn't reach here
+		return NULL;
+	}
+	return str;
+}

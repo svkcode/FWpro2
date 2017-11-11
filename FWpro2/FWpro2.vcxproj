@@ -143,6 +143,7 @@
     <ClInclude Include="Binary.h" />
     <ClInclude Include="CmdFxnDefs.h" />
     <ClInclude Include="CmdProcessor.h" />
+    <ClInclude Include="CSVParser.h" />
     <ClInclude Include="FWpro2.h" />
     <ClInclude Include="Log.h" />
     <ClInclude Include="Resource.h" />
@@ -155,6 +156,7 @@
     <ClCompile Include="Binary.cpp" />
     <ClCompile Include="CmdFxnDefs.cpp" />
     <ClCompile Include="CmdProcessor.cpp" />
+    <ClCompile Include="CSVParser.cpp" />
     <ClCompile Include="FWpro2.cpp" />
     <ClCompile Include="Log.cpp" />
     <ClCompile Include="RunProcess.cpp" />

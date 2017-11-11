@@ -31,4 +31,5 @@ public:
 	void deleteSymbol(string name);
 	void clear(void);
 	int getLength(void *sym, int dataType);
+	string toString(void *sym, int dataType);
 };

@@ -262,5 +262,7 @@ unordered_map<string, CmdFxn> CmdProcessor::fcnDispatch({
 	{ "rand",		&cf_rand },
 	{ "randtable",	&cf_randtable },
 	{ "crc16bin",	&cf_crc16bin},
-	{ "replacebin",	&cf_replacebin}
+	{ "replacebin",	&cf_replacebin},
+	{ "add2csv",	&cf_add2csv},
+	{ "replacecsv",	&cf_replacecsv}
 });

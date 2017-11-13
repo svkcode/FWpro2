@@ -25,7 +25,18 @@
 #define IDM_RUNPAUSE			119
 #define IDM_STOP				120
 #define IDM_LOOP				121
-#define IDD_PROPDLG				122
+#define IDB_SAVE				122
+#define IDB_SAVEAS				123
+#define IDM_OPTIONS				124
+#define IDD_OPTIONS				125
+#define IDC_OPTLD				126
+#define IDC_OPTLOE				127
+#define IDI_CLEAR				128
+#define IDM_CLEAR				129
+#define IDD_PROPDLG				0x1000
+#define PROPDLG_MASK			0xFFF
+#define IDB_PROPSAVE			0x2000
+#define IDB_PROPOPEN			0x3000
 
 #define IDC_MYICON				2
 #ifndef IDC_STATIC
@@ -37,6 +48,7 @@
 #define TBIMG_PAUSE				3
 #define TBIMG_STOP				4
 #define TBIMG_LOOP				5
+#define TBIMG_CLEAR				6
 
 
 // Next default values for new objects

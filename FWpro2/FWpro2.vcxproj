@@ -173,6 +173,7 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="icon.ico" />
+    <Image Include="toolbar\clear.ico" />
     <Image Include="toolbar\loop.ico" />
     <Image Include="toolbar\open.ico" />
     <Image Include="toolbar\pause.ico" />

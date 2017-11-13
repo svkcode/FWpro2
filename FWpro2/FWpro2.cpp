@@ -9,6 +9,7 @@
 #include "Log.h"
 #include <io.h>
 #include <fcntl.h>
+#include <time.h>
 
 #define MAX_LOADSTRING 100
 
@@ -16,6 +17,7 @@
 HINSTANCE hInst;                                // current instance
 TCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 TCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
+HWND hWnd;
 HWND hLogEdit;
 HWND hTool;
 HWND hStatus;
@@ -31,6 +33,7 @@ BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    PropDlg(HWND, UINT, WPARAM, LPARAM);
+INT_PTR CALLBACK    Options(HWND, UINT, WPARAM, LPARAM);
 void initToolbar(void);
 void logAppend(const char * text);
 void logClear(void);
@@ -119,7 +122,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
 	hInst = hInstance; // Store instance handle in our global variable
 
-	HWND hWnd = CreateWindow(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
+	hWnd = CreateWindow(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
 		CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
 
 	if (!hWnd)
@@ -168,15 +171,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		updateButtonStates();		
 
 		// create pipe to stdout
-		LPTSTR pipename = TEXT("\\\\.\\pipe\\stdout");
-		hstdout = CreateNamedPipe(pipename, PIPE_ACCESS_INBOUND, PIPE_TYPE_BYTE |PIPE_READMODE_BYTE | PIPE_WAIT, 1, 1024, 1024, 0, NULL);
+		string pipename = "\\\\.\\pipe\\" + to_string(time(NULL));	// randomize pipename
+		hstdout = CreateNamedPipe(pipename.c_str(), PIPE_ACCESS_INBOUND, PIPE_TYPE_BYTE |PIPE_READMODE_BYTE | PIPE_WAIT, 1, 1024, 1024, 0, NULL);
 		if (hstdout == INVALID_HANDLE_VALUE)
 		{
 			logAppend("Failed to create named pipe for logging \r\n");
 			break;
 		}
 		FILE *fp;
-		int stdh = freopen_s(&fp, pipename, "w", stdout);
+		int stdh = freopen_s(&fp, pipename.c_str(), "w", stdout);
 		setvbuf(stdout, NULL, _IONBF, 0);
 		if (!(ConnectNamedPipe(hstdout, NULL) ? TRUE : (GetLastError() == ERROR_PIPE_CONNECTED)))
 		{
@@ -241,7 +244,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			if (!GetOpenFileName(&ofn)) break;
 			if (!cmdProc.open(ofn.lpstrFile)) break;
 			std::string title = std::string(ofn.lpstrFile) + " - " + szTitle;
-			SetWindowTextA(hWnd, title.c_str());
+			SetWindowText(hWnd, title.c_str());
 			state = FW_IDLE;
 				
 			break;
@@ -286,6 +289,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				cmdProc.setLoop(FALSE);
 			break;
 		}
+		case IDM_CLEAR:
+			logClear();
+			break;
+		case IDM_OPTIONS:
+			DialogBox(hInst, MAKEINTRESOURCE(IDD_OPTIONS), hWnd, Options);
+			break;
 		case IDM_ABOUT:
 			DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
 			break;
@@ -322,8 +331,64 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 	switch (message)
 	{
 	case WM_INITDIALOG:
-		return (INT_PTR)TRUE;
+	{
+		HWND hwndOwner;
+		RECT rc, rcDlg, rcOwner;
+		// Get the owner window and dialog box rectangles. 
+		hwndOwner = GetParent(hDlg);
 
+		GetWindowRect(hwndOwner, &rcOwner);
+		GetWindowRect(hDlg, &rcDlg);
+		CopyRect(&rc, &rcOwner);
+
+		// Offset the owner and dialog box rectangles  
+		OffsetRect(&rcDlg, -rcDlg.left, -rcDlg.top);
+		OffsetRect(&rc, -rc.left, -rc.top);
+		OffsetRect(&rc, -rcDlg.right, -rcDlg.bottom);
+
+		// The new position is the sum of half the remaining space and the owner's original position. 
+		SetWindowPos(hDlg, HWND_TOP, rcOwner.left + (rc.right / 2), rcOwner.top + (rc.bottom / 2), 0, 0, SWP_NOSIZE);
+
+		return (INT_PTR)TRUE;
+	}
+	case WM_COMMAND:
+		if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
+		{
+			EndDialog(hDlg, LOWORD(wParam));
+			return (INT_PTR)TRUE;
+		}
+		break;
+	}
+	return (INT_PTR)FALSE;
+}
+
+// Message handler for options
+INT_PTR CALLBACK Options(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	UNREFERENCED_PARAMETER(lParam);
+	switch (message)
+	{
+	case WM_INITDIALOG:
+	{
+		HWND hwndOwner;
+		RECT rc, rcDlg, rcOwner;
+		// Get the owner window and dialog box rectangles. 
+		hwndOwner = GetParent(hDlg);
+
+		GetWindowRect(hwndOwner, &rcOwner);
+		GetWindowRect(hDlg, &rcDlg);
+		CopyRect(&rc, &rcOwner);
+
+		// Offset the owner and dialog box rectangles  
+		OffsetRect(&rcDlg, -rcDlg.left, -rcDlg.top);
+		OffsetRect(&rc, -rc.left, -rc.top);
+		OffsetRect(&rc, -rcDlg.right, -rcDlg.bottom);
+
+		// The new position is the sum of half the remaining space and the owner's original position. 
+		SetWindowPos(hDlg, HWND_TOP, rcOwner.left + (rc.right / 2), rcOwner.top + (rc.bottom / 2), 0, 0, SWP_NOSIZE);
+
+		return (INT_PTR)TRUE;
+	}
 	case WM_COMMAND:
 		if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
 		{
@@ -339,12 +404,12 @@ void initToolbar(void)
 {
 	// Declare and initialize local constants.
 	const int ImageListID = 0;
-	const int numButtons = 5;
+	const int numButtons = 8;
 
 	// Create the image list.
 	HIMAGELIST g_hImageList = ImageList_Create(24, 24,   // Dimensions of individual bitmaps.
 		ILC_COLOR32 | ILC_MASK,   // Ensures transparent background.
-		6, 0);
+		7, 0);
 
 	ImageList_AddIcon(g_hImageList, (HICON)LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_OPEN)));
 	ImageList_AddIcon(g_hImageList, (HICON)LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_PROP)));
@@ -352,6 +417,7 @@ void initToolbar(void)
 	ImageList_AddIcon(g_hImageList, (HICON)LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_PAUSE)));
 	ImageList_AddIcon(g_hImageList, (HICON)LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_STOP)));
 	ImageList_AddIcon(g_hImageList, (HICON)LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_LOOP)));
+	ImageList_AddIcon(g_hImageList, (HICON)LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_CLEAR)));
 
 	// Set the image list.
 	SendMessage(hTool, TB_SETIMAGELIST, (WPARAM)ImageListID, (LPARAM)g_hImageList);
@@ -361,9 +427,12 @@ void initToolbar(void)
 	{
 		{ MAKELONG(TBIMG_OPEN, ImageListID),	IDM_OPEN,		TBSTATE_ENABLED, 0,			 { 0 }, 0, (INT_PTR)"Open" },
 		{ MAKELONG(TBIMG_PROP, ImageListID),	IDM_PROP,		TBSTATE_ENABLED, 0,			 { 0 }, 0, (INT_PTR)"Properties" },
+		{ 0,									0,				TBSTATE_ENABLED, TBSTYLE_SEP,{ 0 }, 0, 0 },
 		{ MAKELONG(TBIMG_RUN, ImageListID),		IDM_RUNPAUSE,	TBSTATE_ENABLED, 0,			 { 0 }, 0, (INT_PTR)"Run" },
 		{ MAKELONG(TBIMG_STOP, ImageListID),	IDM_STOP,		TBSTATE_ENABLED, 0,			 { 0 }, 0, (INT_PTR)"Stop" },
-		{ MAKELONG(TBIMG_LOOP, ImageListID),	IDM_LOOP,		TBSTATE_ENABLED, BTNS_CHECK, { 0 }, 0, (INT_PTR)"Loop" }
+		{ MAKELONG(TBIMG_LOOP, ImageListID),	IDM_LOOP,		TBSTATE_ENABLED, BTNS_CHECK, { 0 }, 0, (INT_PTR)"Loop" },
+		{ 0,									0,				TBSTATE_ENABLED, TBSTYLE_SEP,{ 0 }, 0, 0 },
+		{ MAKELONG(TBIMG_CLEAR, ImageListID),	IDM_CLEAR,		TBSTATE_ENABLED, 0,			 { 0 }, 0, (INT_PTR)"Clear Log" }
 	};
 
 	// Add buttons.
@@ -438,18 +507,105 @@ INT_PTR CALLBACK PropDlg(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 	switch (message)
 	{
 	case WM_INITDIALOG:
-		cmdProc.paramsInit(hDlg);
-		return (INT_PTR)TRUE;
-
-	case WM_COMMAND:
-		if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
+	{
+		// Initialize the dialog with params
+		if (!cmdProc.paramsInit(hDlg))
 		{
 			EndDialog(hDlg, LOWORD(wParam));
-			return (INT_PTR)TRUE;
+			break;
 		}
-		break;
+
+		// Center the dialog
+		HWND hwndOwner;
+		RECT rc, rcDlg, rcOwner;
+		// Get the owner window and dialog box rectangles. 
+		hwndOwner = GetParent(hDlg);
+
+		GetWindowRect(hwndOwner, &rcOwner);
+		GetWindowRect(hDlg, &rcDlg);
+		CopyRect(&rc, &rcOwner);
+
+		// Offset the owner and dialog box rectangles  
+		OffsetRect(&rcDlg, -rcDlg.left, -rcDlg.top);
+		OffsetRect(&rc, -rc.left, -rc.top);
+		OffsetRect(&rc, -rcDlg.right, -rcDlg.bottom);
+
+		// The new position is the sum of half the remaining space and the owner's original position. 
+		SetWindowPos(hDlg, HWND_TOP, rcOwner.left + (rc.right / 2), rcOwner.top + (rc.bottom / 2), 0, 0, SWP_NOSIZE);
 	}
-	return (INT_PTR)FALSE;
+	case WM_COMMAND:
+	{
+		int wmId = LOWORD(wParam);
+		// Parse the menu selections:
+		switch (wmId)
+		{
+		case IDCANCEL:
+			EndDialog(hDlg, LOWORD(wParam));
+			break;
+		case IDOK:
+			if (cmdProc.paramsOK(hDlg)) EndDialog(hDlg, LOWORD(wParam));
+			break;
+		case IDB_SAVE:
+			if (cmdProc.paramsSave(hDlg)) EndDialog(hDlg, LOWORD(wParam));
+			break;
+		case IDB_SAVEAS:
+		{
+			OPENFILENAME ofn;
+			CHAR szFileName[MAX_PATH];
+			ZeroMemory(&ofn, sizeof(ofn));
+			ofn.lStructSize = sizeof(ofn);
+			ofn.hwndOwner = hDlg;
+			ofn.lpstrFilter = "FWPro2 Files (*.fwpro2)\0*.fwpro2\0\0";
+			ofn.lpstrDefExt = "fwpro2";
+			ofn.lpstrFile = szFileName;
+			ofn.lpstrFile[0] = '\0';
+			ofn.nMaxFile = MAX_PATH;
+			ofn.Flags = OFN_EXPLORER | OFN_OVERWRITEPROMPT;
+			if (!GetSaveFileName(&ofn)) break;
+			if (!cmdProc.paramsSaveAs(hDlg, ofn.lpstrFile)) break;
+			std::string title = std::string(ofn.lpstrFile) + " - " + szTitle;
+			SetWindowText(hWnd, title.c_str());
+			EndDialog(hDlg, LOWORD(wParam));
+			break;
+		}
+		default:
+			if ((wmId & ~PROPDLG_MASK) == IDB_PROPOPEN || (wmId & ~PROPDLG_MASK) == IDB_PROPSAVE)
+			{
+				OPENFILENAME ofn;
+				CHAR szFileName[MAX_PATH];
+				ZeroMemory(&ofn, sizeof(ofn));
+				ofn.lStructSize = sizeof(ofn);
+				ofn.hwndOwner = hDlg;
+				ofn.lpstrFile = szFileName;
+				ofn.lpstrFile[0] = '\0';
+				ofn.nMaxFile = MAX_PATH;
+
+				if ((wmId & ~PROPDLG_MASK) == IDB_PROPOPEN)
+				{
+					ofn.Flags = OFN_EXPLORER | OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+					if (!GetOpenFileName(&ofn)) break;
+				}
+				else
+				{
+					ofn.Flags = OFN_EXPLORER | OFN_OVERWRITEPROMPT;
+					if (!GetSaveFileName(&ofn)) break;
+				}
+
+				// Recover associated edit control from button id
+				HWND hEdit = GetDlgItem(hDlg, ((wmId & PROPDLG_MASK) | IDD_PROPDLG));
+				SetWindowText(hEdit, ofn.lpstrFile);
+				// Move cursor to end
+				SendMessage(hEdit, EM_SETSEL, 0, -1);
+				SendMessage(hEdit, EM_SETSEL, -1, -1);
+			}
+			else
+				return (INT_PTR)FALSE;
+		}
+	}
+	default:
+		return (INT_PTR)FALSE;
+	}
+	return (INT_PTR)TRUE;
 }
 
 void updateButtonStates(void)

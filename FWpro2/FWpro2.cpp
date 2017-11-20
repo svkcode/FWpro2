@@ -286,6 +286,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			break;
 		}
 		case IDM_STOP:
+			if(state == FW_PAUSED) ResumeThread(hThread);
 			state = FW_BUSY;
 			cmdProc.stop();
 			log("\r\nStopping...");

@@ -33,6 +33,7 @@ class CmdProcessor
 	DWORD prevFilePointer;
 	BOOL _loop;
 	State state;
+	HANDLE hTimer;
 	vector<string> scriptNxtLine(void);
 	BOOL addParam(vector<string>, SymbolTable &sTable, vector<paramInfo> &paramOrder);
 	void processCmds(void);
@@ -50,4 +51,6 @@ public:
 	BOOL paramsOK(HWND);
 	void setLoop(BOOL);
 	void stop(void);
+	BOOL loopOnError;
+	DWORD loopDelay;
 };

@@ -109,6 +109,7 @@ BOOL cf_hex2bin(vector<string> params, SymbolTable &sTable, State &state)
 	{
 		logE("Unable to read file %s", src);
 		CloseHandle(hFile);
+		delete[] buffer;
 		return FALSE;
 	}
 	CloseHandle(hFile);
@@ -293,6 +294,48 @@ BOOL cf_savebin(vector<string> params, SymbolTable &sTable, State &state)
 	return TRUE;
 }
 
+BOOL cf_openbin(vector<string> params, SymbolTable &sTable, State &state)
+{
+	CHECK_ARG_COUNT(3);
+	// destination
+	// source file
+	char *src;
+	GETCHARPTR(params[2], src, DT_STRING);
+	// start address
+	int startAddr;
+	GETNUMBER(params[3], startAddr);
+
+	// load the binary file
+	HANDLE hFile = CreateFile(src, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (hFile == INVALID_HANDLE_VALUE)
+	{
+		logE("Unable to open file %s", src);
+		return FALSE;
+	}
+	DWORD readFileLen = GetFileSize(hFile, NULL);
+	DWORD NumberOfBytesRead;
+	CHAR *buffer = new CHAR[readFileLen];
+	if (!ReadFile(hFile, buffer, readFileLen, &NumberOfBytesRead, NULL))
+	{
+		logE("Unable to read file %s", src);
+		CloseHandle(hFile);
+		delete[] buffer;
+		return FALSE;
+	}
+	CloseHandle(hFile);
+	// destination symbol
+	Binary *bin = (Binary *)sTable.newSymbol(params[1], DT_BINARY);
+	// convert to binary
+	log("Opening %s & storing it in %s", src, params[1].c_str());
+
+	bin->add(buffer, NumberOfBytesRead, startAddr, FALSE);
+
+	// free the buffer
+	delete[] buffer;
+
+	return TRUE;
+}
+
 BOOL cf_run(vector<string> params, SymbolTable &sTable, State &state)
 {
 	CHECK_ARG_COUNT(2);
@@ -311,13 +354,27 @@ BOOL cf_run(vector<string> params, SymbolTable &sTable, State &state)
 	}
 
 	log("Launching %s ...", PathFindFileName(runFile));
-	BOOL result = runProcess(runFile, cmdLine, state, storeOutput?&output:NULL);
+	BOOL result = runProcess(runFile, cmdLine, state, storeOutput?&output:NULL, FALSE);
 	if (!storeOutput || !result) return result;
 
 	// create a new symbol & store the output
 	char *str = (char *)sTable.newSymbol(params[3], DT_STRING, output.length() + 1);
 	memcpy(str, output.c_str(), output.length() + 1);
 	return TRUE;
+}
+
+BOOL cf_runw(vector<string> params, SymbolTable &sTable, State &state)
+{
+	CHECK_ARG_COUNT(2);
+	// program
+	char *runFile;
+	GETCHARPTR(params[1], runFile, DT_STRING);
+	// cmd line
+	char *cmdLine;
+	GETCHARPTR(params[2], cmdLine, DT_STRING);
+
+	log("Launching %s ...", PathFindFileName(runFile));
+	return runProcess(runFile, cmdLine, state, NULL, TRUE);
 }
 
 BOOL cf_substring(vector<string> params, SymbolTable &sTable, State &state)

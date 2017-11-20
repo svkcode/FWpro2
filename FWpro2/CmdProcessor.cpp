@@ -11,6 +11,11 @@ CmdProcessor::CmdProcessor(void)
 	// init state variables
 	_loop = FALSE;
 	state = State::run;
+	loopOnError = FALSE;
+	loopDelay = 1000;
+	// Create an unnamed waitable timer.
+	if ((hTimer = CreateWaitableTimer(NULL, TRUE, NULL)) == NULL)
+		logE("Failed to create waitable timer");
 }
 
 BOOL CmdProcessor::paramsInit(HWND hDlg)
@@ -424,11 +429,23 @@ start:
 		if (cmdlets[0] == "end")
 		{
 			log("Completed");
+		do_loop:
 			if (_loop)
-			{
+			{	
 				log("Looping...");
 				scriptOffset = scriptLoopOffset;
-				Sleep(1000);
+				// Loop delay
+				LONGLONG delay = 10000 * loopDelay; // ms to 100ns
+				delay = -delay; // relative time
+				if (hTimer == NULL || !SetWaitableTimer(hTimer, (LARGE_INTEGER *)&delay, 0, NULL, NULL, 0))
+				{
+					logE("Failed to set waitable timer");
+					return;
+				}
+				while(WaitForSingleObject(hTimer, 10) == WAIT_TIMEOUT)
+				{
+					if (state == State::stop) return;
+				}
 				goto start;
 			}
 			else return;
@@ -442,7 +459,10 @@ start:
 		// process commands
 		try
 		{
-			if (!(*fcnDispatch.at(cmdlets[0]))(cmdlets, sTable, state)) return;
+			if (!(*fcnDispatch.at(cmdlets[0]))(cmdlets, sTable, state))
+			{
+				if (loopOnError) goto do_loop; else return;
+			}
 		}
 		catch(out_of_range oor)
 		{
@@ -456,7 +476,9 @@ unordered_map<string, CmdFxn> CmdProcessor::fcnDispatch({
 	{ "hex2bin",	&cf_hex2bin },
 	{ "mergebin",	&cf_mergebin },
 	{ "savebin",	&cf_savebin },
+	{ "openbin",	&cf_openbin },
 	{ "run",		&cf_run },
+	{ "runw",		&cf_runw },
 	{ "substr",		&cf_substring },
 	{ "replace",	&cf_replace },
 	{ "add2bin",	&cf_add2bin },

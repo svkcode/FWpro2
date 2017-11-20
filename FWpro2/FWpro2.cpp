@@ -40,6 +40,7 @@ void logClear(void);
 void updateButtonStates(void);
 DWORD WINAPI cmdProcThread(LPVOID lpParam);
 DWORD WINAPI logThread(LPVOID lpParam);
+BOOL getOptions(OptionsStruct &opt, BOOL set);
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	_In_opt_ HINSTANCE hPrevInstance,
@@ -193,6 +194,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			logAppend("Failed to create log thread \r\n");
 			break;
 		}	
+
+		// Update options from registry
+		OptionsStruct opt;
+		if (!getOptions(opt, FALSE))
+		{
+			log("Using default options");
+		}
+		cmdProc.loopDelay = opt.loopDelay;
+		cmdProc.loopOnError = opt.loopOnError;
 	}
 	break;
 	case WM_SIZE:
@@ -370,6 +380,16 @@ INT_PTR CALLBACK Options(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 	case WM_INITDIALOG:
 	{
+		// Display current options from registry
+		OptionsStruct opt;
+		if (!getOptions(opt, FALSE))
+		{
+			MessageBox(NULL, "Unable to load saved options", "FWpro2", MB_OK | MB_ICONERROR);
+		}
+		SetDlgItemText(hDlg, IDC_OPTLD, to_string(opt.loopDelay).c_str());
+		SendMessage(GetDlgItem(hDlg, IDC_OPTLOE), BM_SETCHECK, opt.loopOnError, 0);
+
+		// Center dialog
 		HWND hwndOwner;
 		RECT rc, rcDlg, rcOwner;
 		// Get the owner window and dialog box rectangles. 
@@ -390,7 +410,26 @@ INT_PTR CALLBACK Options(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 		return (INT_PTR)TRUE;
 	}
 	case WM_COMMAND:
-		if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
+		if (LOWORD(wParam) == IDOK)
+		{
+			// Get updated options
+			OptionsStruct opt;
+			opt.loopOnError = SendMessage(GetDlgItem(hDlg, IDC_OPTLOE), BM_GETCHECK, 0, 0);
+			CHAR buffer[10];
+			GetDlgItemText(hDlg, IDC_OPTLD, buffer, 10);
+			opt.loopDelay = atoi(buffer);
+			// Update command proc
+			cmdProc.loopDelay = opt.loopDelay;
+			cmdProc.loopOnError = opt.loopOnError;
+			// Save to registry
+			if (!getOptions(opt, TRUE))
+			{
+				MessageBox(NULL, "Unable to save options", "FWpro2", MB_OK | MB_ICONERROR);
+			}
+			EndDialog(hDlg, LOWORD(wParam));
+			return (INT_PTR)TRUE;
+		}
+		else if(LOWORD(wParam) == IDCANCEL)
 		{
 			EndDialog(hDlg, LOWORD(wParam));
 			return (INT_PTR)TRUE;
@@ -669,4 +708,50 @@ DWORD WINAPI logThread(LPVOID lpParam)
 		logAppend(buffer);
 	}
 	return 0;
+}
+
+BOOL getOptions(OptionsStruct &opt, BOOL set)
+{	
+	if (!set)
+	{
+		// Default values
+		opt.loopDelay = 1000;
+		opt.loopOnError = FALSE;
+	}
+	// Registry defines for each option
+	RegDefOpt reg[] = { { "LoopOnError", RRF_RT_REG_DWORD, REG_DWORD, &opt.loopOnError, sizeof(opt.loopOnError) },
+						{ "LoopDelay", RRF_RT_REG_DWORD, REG_DWORD, &opt.loopDelay, sizeof(opt.loopDelay) } };
+	// Key
+	LPCSTR key = "SOFTWARE\\FWpro2";
+	HKEY hKey;
+	DWORD error;
+	error = RegCreateKeyEx(HKEY_CURRENT_USER, key, NULL, NULL, NULL, KEY_ALL_ACCESS, NULL, &hKey, NULL);
+	if (error != ERROR_SUCCESS)
+	{
+		SetLastError(error);
+		logE("Registry error");
+		return FALSE;
+	}
+	for (auto it : reg)
+	{
+		DWORD cbData = it.size;
+		// Get existing value
+		if(!set)
+			error = RegGetValue(hKey, NULL, it.valueName, it.getType, NULL, it.value, &cbData);
+		// Create default value if not found
+		if (error == ERROR_FILE_NOT_FOUND || set)
+		{
+			error = RegSetValueEx(hKey, it.valueName, NULL, it.setType, (BYTE *)it.value, it.size);
+		}
+
+		if (error != ERROR_SUCCESS)
+		{
+			SetLastError(error);
+			logE("Registry error");
+			RegCloseKey(hKey);
+			return FALSE;
+		}
+	}
+	RegCloseKey(hKey);
+	return TRUE;
 }

@@ -4,7 +4,8 @@
 #include "RunProcess.h"
 using namespace std;
 
-BOOL runProcess(char *appName, char *cmdLine, State &state, string *output)
+
+BOOL runProcess(char *appName, char *cmdLine, State &state, string *output, BOOL showWindow)
 {
 	// Handles to stdout pipe
 	HANDLE g_hChildStd_OUT_Rd = NULL;
@@ -26,6 +27,8 @@ BOOL runProcess(char *appName, char *cmdLine, State &state, string *output)
 	if (!SetHandleInformation(g_hChildStd_OUT_Rd, HANDLE_FLAG_INHERIT, 0))
 	{
 		logE("Failed to set pipe handle information");
+		CloseHandle(g_hChildStd_OUT_Rd);
+		CloseHandle(g_hChildStd_OUT_Wr);
 		return FALSE;
 	}
 
@@ -41,7 +44,9 @@ BOOL runProcess(char *appName, char *cmdLine, State &state, string *output)
 	siStartInfo.cb = sizeof(STARTUPINFO);
 	siStartInfo.hStdError = g_hChildStd_OUT_Wr;
 	siStartInfo.hStdOutput = g_hChildStd_OUT_Wr;
-	siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
+	// redirect stdout only if window is hidden
+	if (!showWindow)
+		siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
 
 	// Get current directory of the application
 	TCHAR temp[MAX_PATH];
@@ -54,21 +59,42 @@ BOOL runProcess(char *appName, char *cmdLine, State &state, string *output)
 		file = file.substr(0, n);
 		directory = file.c_str();
 	}
+
+	// Launch the process in debug mode so that it is 
+	// automatically terminated if the app is closed
+	DWORD cFlags = DEBUG_PROCESS; // NULL
+	if (!showWindow) cFlags |= CREATE_NO_WINDOW;
 	
 	// Create the child process. 
-	if (!CreateProcess(appName, cmdLine, NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, directory, &siStartInfo, &piProcInfo))
+	if (!CreateProcess(appName, cmdLine, NULL, NULL, TRUE, cFlags, NULL, directory, &siStartInfo, &piProcInfo))
 	{
 		logE("Unable to run %s", PathFindFileName(appName));
+		CloseHandle(g_hChildStd_OUT_Rd);
+		CloseHandle(g_hChildStd_OUT_Wr);
 		return FALSE;
 	}
 
+
 	DWORD dwRead, bytesAvailable, wFSO;
 	CHAR chBuf[256];
+	BOOL stopping = FALSE;
+	DEBUG_EVENT DebugEv;
 
-	while (state == State::run)
+	while (true)
 	{
+		// Check if user stopped the execution
+		if (state == State::stop && !stopping)
+		{
+			TerminateProcess(piProcInfo.hProcess, -1);
+			stopping = TRUE;
+		}
+
 		// Check for process exit (1ms timeout to reduce CPU load)
 		wFSO = WaitForSingleObject(piProcInfo.hProcess, 1);
+
+		// Resume process on debug events		
+		if(WaitForDebugEvent(&DebugEv, 0))
+			ContinueDebugEvent(DebugEv.dwProcessId, DebugEv.dwThreadId, DBG_CONTINUE);
 		
 		// If bytes available, move them to calling process' stdout
 		PeekNamedPipe(g_hChildStd_OUT_Rd, NULL, NULL, NULL, &bytesAvailable, NULL);
@@ -89,20 +115,13 @@ BOOL runProcess(char *appName, char *cmdLine, State &state, string *output)
 		else if (wFSO == WAIT_FAILED)
 		{
 			logE("Wait for process failed");
-			break;
+			//break;
 		}
 	}
 
 	DWORD exitCode; 
 	if (!GetExitCodeProcess(piProcInfo.hProcess, &exitCode))
 		exitCode = 100;
-	
-	// terminate process if still active
-	if (WaitForSingleObject(piProcInfo.hProcess, 0) != WAIT_OBJECT_0)
-	{
-		TerminateProcess(piProcInfo.hProcess, -1);
-		exitCode = -1;
-	}
 
 	// Close process and pipe handles. 
 	CloseHandle(piProcInfo.hProcess);

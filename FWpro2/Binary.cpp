@@ -190,7 +190,7 @@ UINT16 Binary::crc16(UINT start, UINT end)
 	if (end > endAddr) end = endAddr;
 
 	UINT16 crc = 0xFFFF;
-	for (UINT i = start; i < end; i++)
+	for (UINT i = start; i <= end; i++)
 	{
 		crc = crc ^ (binData[i - startAddr] << 8);
 		for (int j = 0; j < 8; j++)

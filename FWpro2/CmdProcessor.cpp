@@ -488,5 +488,6 @@ unordered_map<string, CmdFxn> CmdProcessor::fcnDispatch({
 	{ "crc16bin",	&cf_crc16bin},
 	{ "replacebin",	&cf_replacebin},
 	{ "add2csv",	&cf_add2csv},
-	{ "replacecsv",	&cf_replacecsv}
+	{ "replacecsv",	&cf_replacecsv},
+	{ "findcsv",    &cf_findcsv}
 });

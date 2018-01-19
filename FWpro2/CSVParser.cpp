@@ -102,27 +102,31 @@ BOOL readLineCSV(HANDLE hFile, vector<string> &row, DWORD &filePointer)
 	return TRUE;
 }
 
-
-BOOL findCSV(HANDLE hFile, vector<string> header, string key, string value, vector<string> &row, DWORD &filePointer)
+int getColumnIdx(vector<string> header, string key)
 {
-	UINT column;
-	// find column index of the key
 	for (UINT i = 0; i < header.size(); i++)
 	{
 		if (header.at(i) == key)
 		{
-			column = i;
-			goto find;
+			return i;
 		}
 	}
 	log("%s is not a valid header in the csv file", key.c_str());
-	return FALSE;
-	find:
+	return -1;
+}
+
+BOOL findCSV(HANDLE hFile, vector<string> header, string key, string value, vector<string> &row, DWORD &filePointer)
+{
+	int column;
+	// find column index of the key
+	if((column = getColumnIdx(header, key)) == -1)	
+		return FALSE;
+
 	while (true)
 	{
 		if (!readLineCSV(hFile, row, filePointer)) return FALSE; // Error
 		if (row.size() == 0) return TRUE; // EOF
-		if (row.size() > column)
+		if (row.size() > (UINT)column)
 		{
 			if (row.at(column) == value)
 				return TRUE;
@@ -248,19 +252,34 @@ error:
 	return FALSE;
 }
 
-BOOL findCSV(const char *file, string key, string value, vector<string> &row)
+BOOL findCSV(const char *file, string key, string value, string key2, vector<string> &row)
 {
 	HANDLE hFile;
 	vector<string> header;
 	DWORD filePtr;
+	int column;
 	// open
 	if (!openCSV(file, hFile)) return FALSE;
 	// read header
 	if (!readLineCSV(hFile, header, filePtr)) goto error;
 	// find
 	if (!findCSV(hFile, header, key, value, row, filePtr)) goto error;
-
 	CloseHandle(hFile);
+	// return entire row if no specific key requested
+	if (key2 == "") return TRUE;	
+	// check if key/value exists
+	if (row.empty())
+	{
+		log("%s : %s does not exist in %s", key.c_str(), value.c_str(), file);
+		return FALSE;
+	}
+	// find column index of the key
+	if ((column = getColumnIdx(header, key2)) == -1)
+		return FALSE;
+	// move the value to the first position & resize
+	row.at(0) = row.at(column);
+	row.resize(1);
+
 	return TRUE;
 
 error:

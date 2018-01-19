@@ -541,7 +541,7 @@ BOOL cf_add2csv(vector<string> params, SymbolTable &sTable, State &state)
 	
 	vector<string> temp;
 	// find if key/value already exists
-	if (!findCSV(file, kvp[0].first, kvp[0].second, temp)) return FALSE;
+	if (!findCSV(file, kvp[0].first, kvp[0].second, "", temp)) return FALSE;
 	if (!temp.empty()) 
 	{ 
 		log("%s : %s already exists in %s", kvp[0].first.c_str(), kvp[0].second.c_str(), file);
@@ -575,5 +575,30 @@ BOOL cf_replacecsv(vector<string> params, SymbolTable &sTable, State &state)
 
 	if (!replaceCSV(file, kvp[0].first, kvp[0].second, kvp)) return FALSE;
 	log("Added values to %s", file);
+	return TRUE;
+}
+
+BOOL cf_findcsv(vector<string> params, SymbolTable &sTable, State &state)
+{
+	CHECK_ARG_COUNT(5);
+	// source file
+	char *file;
+	GETCHARPTR(params[1], file, DT_STRING);
+	// key to find
+	// value to find
+	int num; // reqd by getunknown
+	int dataType;
+	char *data;
+	dataType = DT_NUMBER | DT_STRING | DT_BYTEARRAY;
+	GETUNKNOWN(params[3], data, num, dataType);
+
+	vector<string> temp;
+	// find the reqd value
+	if (!findCSV(file, params[2], sTable.toString(data, dataType), params[4], temp)) return FALSE;
+
+	// copy to destination
+	char *dststr = (char *)sTable.newSymbol(params[5], DT_STRING, temp[0].length() + 1);
+	memcpy(dststr, temp[0].c_str(), temp[0].length() + 1);
+	log("Value of %s in %s copied to %s", params[4].c_str(), file, params[5].c_str());
 	return TRUE;
 }

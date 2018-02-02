@@ -602,3 +602,31 @@ BOOL cf_findcsv(vector<string> params, SymbolTable &sTable, State &state)
 	log("Value of %s in %s copied to %s", params[4].c_str(), file, params[5].c_str());
 	return TRUE;
 }
+
+BOOL cf_add2str(vector<string> params, SymbolTable &sTable, State &state)
+{
+	CHECK_ARG_COUNT(2);
+	// destination
+	char *dststr;
+	string str;
+	if ((dststr = (char *)sTable.getSymbol(params[1], DT_STRING)) != NULL)
+		str = string(dststr);
+	// source
+	int num; // reqd by getunknown
+	int dataType;
+	char *data;
+	for (UINT i = 2; i < params.size(); i++)
+	{
+		dataType = DT_NUMBER | DT_STRING | DT_BYTEARRAY;
+		GETUNKNOWN(params[i], data, num, dataType);
+
+		// append to the destination string
+		str.append(sTable.toString(data, dataType));
+		log("Adding %s to %s", params[i].c_str(), params[1].c_str());
+	}
+
+	// copy to destination
+	dststr = (char *)sTable.newSymbol(params[1], DT_STRING, str.length() + 1);
+	memcpy(dststr, str.c_str(), str.length() + 1);
+	return TRUE;
+}

@@ -473,21 +473,22 @@ start:
 }
 
 unordered_map<string, CmdFxn> CmdProcessor::fcnDispatch({
-	{ "hex2bin",	&cf_hex2bin },
-	{ "mergebin",	&cf_mergebin },
-	{ "savebin",	&cf_savebin },
-	{ "openbin",	&cf_openbin },
-	{ "run",		&cf_run },
-	{ "runw",		&cf_runw },
-	{ "substr",		&cf_substring },
-	{ "replace",	&cf_replace },
-	{ "add2bin",	&cf_add2bin },
-	{ "length",		&cf_length },
-	{ "rand",		&cf_rand },
-	{ "randtable",	&cf_randtable },
-	{ "crc16bin",	&cf_crc16bin},
-	{ "replacebin",	&cf_replacebin},
-	{ "add2csv",	&cf_add2csv},
-	{ "replacecsv",	&cf_replacecsv},
-	{ "findcsv",    &cf_findcsv}
+	{ "hex2bin",	&cf_hex2bin },		// dest symbol, src file string/symbol, start address number/symbol, end address number/symbol
+	{ "mergebin",	&cf_mergebin },		// dest symbol, src1 symbol, src2 symbol
+	{ "savebin",	&cf_savebin },		// dest string/symbol, src symbol
+	{ "openbin",	&cf_openbin },		// dest symbol, src string/symbol, start address number/symbol
+	{ "run",		&cf_run },			// run file string/symbol, cmd line string/symbol, (opt) dest for output symbol
+	{ "runw",		&cf_runw },			// run file string/symbol, cmd line string/symbol (run program in a window)
+	{ "substr",		&cf_substring },	// dest symbol, src string/symbol, offset number/symbol, length number/symbol
+	{ "replace",	&cf_replace },		// dest symbol, src string/symbol, find string/symbol, replace with string/symbol
+	{ "add2bin",	&cf_add2bin },		// dest symbol, data number/string/symbol, address number/symbol, length in bytes number/symbol, lsb/msb
+	{ "length",		&cf_length },		// dest symbol, data symbol
+	{ "rand",		&cf_rand },			// dest symbol, length of bytes number/symbol
+	{ "randtable",	&cf_randtable },	// dest symbol
+	{ "crc16bin",	&cf_crc16bin},		// dest symbol, binary symbol, (opt) start address number/symbol, (opt) end address number/symbol
+	{ "replacebin",	&cf_replacebin},	// dest symbol, find string/symbol, replace with string/symbol
+	{ "add2csv",	&cf_add2csv},		// csv file string/symbol, key string, value number/string/symbol ...(multiple key-value pairs)
+	{ "replacecsv",	&cf_replacecsv},	// same as add2csv (replaces if k/v already exists)
+	{ "findcsv",    &cf_findcsv},		// csv file string/symbol, key to find string, value to find number/string/symbol, key to read string, dest symbol
+	{ "add2str",	&cf_add2str}		// dest symbol, src number/string/byteArray symbol ...
 });

@@ -19,7 +19,7 @@ using namespace std;
 BOOL tryStr2Num(string param, int *ptr)
 {
 	// if param starts with a number, then use it as a literal
-	if ((param.at(0) >= '0' && param.at(0) <= '9') || param.at(0) == '+' || param.at(0) == '-')
+	if (param.find_first_not_of("0123456789+-") == string::npos || param.substr(0, 2) == "0x" || param.substr(0, 2) == "0X")
 	{
 		*ptr = strtol(param.c_str(), NULL, 0);
 		return TRUE;
@@ -336,45 +336,57 @@ BOOL cf_openbin(vector<string> params, SymbolTable &sTable, State &state)
 	return TRUE;
 }
 
-BOOL cf_run(vector<string> params, SymbolTable &sTable, State &state)
+BOOL runproc(vector<string> params, SymbolTable &sTable, State &state, BOOL storeOutput, BOOL showWindow)
 {
-	CHECK_ARG_COUNT(2);
+	UINT8 idx;
+	string output;
+	vector<string> cmdLine;
+	if (storeOutput)
+	{
+		CHECK_ARG_COUNT(3);
+		// idx 2 is output symbol
+		idx = 3;
+	}
+	else
+	{
+		CHECK_ARG_COUNT(2);
+		idx = 2;
+	}
 	// program
 	char *runFile;
 	GETCHARPTR(params[1], runFile, DT_STRING);
-	// cmd line
-	char *cmdLine;
-	GETCHARPTR(params[2], cmdLine, DT_STRING);
-	// check for optional arguments to store the output
-	BOOL storeOutput = FALSE;
-	string output;
-	if (params.size() > 3)
+	// cmd line (could be multiple)
+	while (idx < params.size())
 	{
-		storeOutput = TRUE;
+		char *ptr;
+		GETCHARPTR(params[idx], ptr, DT_STRING);
+		idx++;
+		cmdLine.push_back(string(ptr));
 	}
 
 	log("Launching %s ...", PathFindFileName(runFile));
-	BOOL result = runProcess(runFile, cmdLine, state, storeOutput?&output:NULL, FALSE);
+	BOOL result = runProcess(runFile, cmdLine, state, storeOutput ? &output : NULL, showWindow);
 	if (!storeOutput || !result) return result;
 
 	// create a new symbol & store the output
-	char *str = (char *)sTable.newSymbol(params[3], DT_STRING, output.length() + 1);
+	char *str = (char *)sTable.newSymbol(params[2], DT_STRING, output.length() + 1);
 	memcpy(str, output.c_str(), output.length() + 1);
 	return TRUE;
 }
 
+BOOL cf_run(vector<string> params, SymbolTable &sTable, State &state)
+{
+	return runproc(params, sTable, state, FALSE, FALSE);
+}
+
+BOOL cf_runs(vector<string> params, SymbolTable &sTable, State &state)
+{
+	return runproc(params, sTable, state, TRUE, FALSE);
+}
+
 BOOL cf_runw(vector<string> params, SymbolTable &sTable, State &state)
 {
-	CHECK_ARG_COUNT(2);
-	// program
-	char *runFile;
-	GETCHARPTR(params[1], runFile, DT_STRING);
-	// cmd line
-	char *cmdLine;
-	GETCHARPTR(params[2], cmdLine, DT_STRING);
-
-	log("Launching %s ...", PathFindFileName(runFile));
-	return runProcess(runFile, cmdLine, state, NULL, TRUE);
+	return runproc(params, sTable, state, FALSE, TRUE);
 }
 
 BOOL cf_substring(vector<string> params, SymbolTable &sTable, State &state)

@@ -477,8 +477,9 @@ unordered_map<string, CmdFxn> CmdProcessor::fcnDispatch({
 	{ "mergebin",	&cf_mergebin },		// dest symbol, src1 symbol, src2 symbol
 	{ "savebin",	&cf_savebin },		// dest string/symbol, src symbol
 	{ "openbin",	&cf_openbin },		// dest symbol, src string/symbol, start address number/symbol
-	{ "run",		&cf_run },			// run file string/symbol, cmd line string/symbol, (opt) dest for output symbol
-	{ "runw",		&cf_runw },			// run file string/symbol, cmd line string/symbol (run program in a window)
+	{ "run",		&cf_run },			// run file string/symbol, cmd line string/symbol, ...further inputs string/symbol
+	{ "runs",		&cf_runs },			// run file string/symbol, dest for output symbol, cmd line string/symbol, ...further inputs string/symbol
+	{ "runw",		&cf_runw },			// run file string/symbol, cmd line string/symbol, ...further inputs string/symbol (run program in a window)
 	{ "substr",		&cf_substring },	// dest symbol, src string/symbol, offset number/symbol, length number/symbol
 	{ "replace",	&cf_replace },		// dest symbol, src string/symbol, find string/symbol, replace with string/symbol
 	{ "add2bin",	&cf_add2bin },		// dest symbol, data number/string/symbol, address number/symbol, length in bytes number/symbol, lsb/msb

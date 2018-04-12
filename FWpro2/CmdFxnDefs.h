@@ -10,6 +10,7 @@ BOOL cf_add2bin(vector<string> params, SymbolTable &sTable, State &state);
 BOOL cf_savebin(vector<string> params, SymbolTable &sTable, State &state);
 BOOL cf_openbin(vector<string> params, SymbolTable &sTable, State &state);
 BOOL cf_run(vector<string> params, SymbolTable &sTable, State &state);
+BOOL cf_runs(vector<string> params, SymbolTable &sTable, State &state);
 BOOL cf_runw(vector<string> params, SymbolTable &sTable, State &state);
 BOOL cf_substring(vector<string> params, SymbolTable &sTable, State &state);
 BOOL cf_replace(vector<string> params, SymbolTable &sTable, State &state);

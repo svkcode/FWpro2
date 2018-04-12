@@ -5,18 +5,21 @@
 using namespace std;
 
 
-BOOL runProcess(char *appName, char *cmdLine, State &state, string *output, BOOL showWindow)
+BOOL runProcess(char *appName, vector<string> cmdLine, State &state, string *output, BOOL showWindow)
 {
 	// Handles to stdout pipe
 	HANDLE g_hChildStd_OUT_Rd = NULL;
 	HANDLE g_hChildStd_OUT_Wr = NULL;
+	HANDLE g_hChildStd_IN_Rd = NULL;
+	HANDLE g_hChildStd_IN_Wr = NULL;
 
-	// Create a pipe for the child process's STDOUT. 
+	
 	SECURITY_ATTRIBUTES saAttr;
 	saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
 	saAttr.bInheritHandle = TRUE;
 	saAttr.lpSecurityDescriptor = NULL;
 
+	// Create a pipe for the child process's STDOUT. 
 	if (!CreatePipe(&g_hChildStd_OUT_Rd, &g_hChildStd_OUT_Wr, &saAttr, 0))
 	{
 		logE("Failed to create pipe to stdout");
@@ -32,6 +35,26 @@ BOOL runProcess(char *appName, char *cmdLine, State &state, string *output, BOOL
 		return FALSE;
 	}
 
+	// Create a pipe for the child process's STDIN. 
+	if (!CreatePipe(&g_hChildStd_IN_Rd, &g_hChildStd_IN_Wr, &saAttr, 0))
+	{
+		logE("Failed to create pipe to stdin");
+		CloseHandle(g_hChildStd_OUT_Rd);
+		CloseHandle(g_hChildStd_OUT_Wr);
+		return FALSE;
+	}
+
+	// Ensure the write handle to the pipe for STDIN is not inherited. 
+	if (!SetHandleInformation(g_hChildStd_IN_Wr, HANDLE_FLAG_INHERIT, 0))
+	{
+		logE("Failed to set pipe handle information");
+		CloseHandle(g_hChildStd_OUT_Rd);
+		CloseHandle(g_hChildStd_OUT_Wr);
+		CloseHandle(g_hChildStd_IN_Rd);
+		CloseHandle(g_hChildStd_IN_Wr);
+		return FALSE;
+	}
+
 	PROCESS_INFORMATION piProcInfo;
 	STARTUPINFO siStartInfo;
 
@@ -44,6 +67,7 @@ BOOL runProcess(char *appName, char *cmdLine, State &state, string *output, BOOL
 	siStartInfo.cb = sizeof(STARTUPINFO);
 	siStartInfo.hStdError = g_hChildStd_OUT_Wr;
 	siStartInfo.hStdOutput = g_hChildStd_OUT_Wr;
+	siStartInfo.hStdInput = g_hChildStd_IN_Rd;
 	// redirect stdout only if window is hidden
 	if (!showWindow)
 		siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
@@ -64,16 +88,20 @@ BOOL runProcess(char *appName, char *cmdLine, State &state, string *output, BOOL
 	// automatically terminated if the app is closed
 	DWORD cFlags = DEBUG_PROCESS; // NULL
 	if (!showWindow) cFlags |= CREATE_NO_WINDOW;
+
+	auto cmd = cmdLine.begin();
 	
 	// Create the child process. 
-	if (!CreateProcess(appName, cmdLine, NULL, NULL, TRUE, cFlags, NULL, directory, &siStartInfo, &piProcInfo))
+	if (!CreateProcess(appName, (LPSTR)(cmd->c_str()), NULL, NULL, TRUE, cFlags, NULL, directory, &siStartInfo, &piProcInfo))
 	{
 		logE("Unable to run %s", PathFindFileName(appName));
 		CloseHandle(g_hChildStd_OUT_Rd);
 		CloseHandle(g_hChildStd_OUT_Wr);
+		CloseHandle(g_hChildStd_IN_Rd);
+		CloseHandle(g_hChildStd_IN_Wr);
 		return FALSE;
 	}
-
+	cmd++;
 
 	DWORD dwRead, bytesAvailable, wFSO;
 	CHAR chBuf[256];
@@ -111,6 +139,26 @@ BOOL runProcess(char *appName, char *cmdLine, State &state, string *output, BOOL
 			else logE("Stdout pipe read error");
 			
 		}
+
+		// Queue additional command line inputs to stdin
+		if (cmd != cmdLine.end())
+		{
+			// Check if stdin is empty
+			PeekNamedPipe(g_hChildStd_IN_Rd, NULL, NULL, NULL, &bytesAvailable, NULL);
+			if (bytesAvailable == 0)
+			{
+				// Additional cmds should be newline terminated
+				*cmd += string("\n\n");
+				char *c = (char *)cmd->c_str();
+				c[cmd->size() - 2] = 0;
+
+				if (WriteFile(g_hChildStd_IN_Wr, c, cmd->size(), &dwRead, NULL))
+					cmd++;
+				else
+					logE("Stdin pipe write error");
+			}
+		}
+
 		if (wFSO == WAIT_OBJECT_0) break;
 		else if (wFSO == WAIT_FAILED)
 		{
@@ -128,6 +176,8 @@ BOOL runProcess(char *appName, char *cmdLine, State &state, string *output, BOOL
 	CloseHandle(piProcInfo.hThread);
 	CloseHandle(g_hChildStd_OUT_Rd);
 	CloseHandle(g_hChildStd_OUT_Wr);
+	CloseHandle(g_hChildStd_IN_Rd);
+	CloseHandle(g_hChildStd_IN_Wr);
 
 	if (exitCode == 0)
 	{

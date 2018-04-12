@@ -1,3 +1,3 @@
 #pragma once
 
-BOOL runProcess(char *appName, char *cmdLine, State &state, string *output, BOOL showWindow);
+BOOL runProcess(char *appName, vector<string> cmdLine, State &state, string *output, BOOL showWindow);

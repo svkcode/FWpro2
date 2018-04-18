@@ -13,7 +13,7 @@ using namespace std;
 #define GETCHARPTR(a, b, c)		if ((b = (char *)sTable.getSymbol(a, c)) == NULL) b = (char *)a.c_str();
 #define GETNUMBER(a, b)			if(!getNumber(a, b, sTable)) return FALSE;
 #define GETBINARY(a, b)			if ((b = (Binary *)sTable.getSymbol(a, DT_BINARY)) == NULL) { log("Symbol %s not found",a.c_str()); return FALSE; }
-#define GETUNKNOWN(a, b, c, d)		if(!getUnknown(a, &b, &c, d, sTable)) return FALSE;
+#define GETUNKNOWN(a, b, c, d)	if(!getUnknown(a, &b, &c, d, sTable)) return FALSE;
 
 
 BOOL tryStr2Num(string param, int *ptr)
@@ -624,13 +624,27 @@ BOOL cf_add2str(vector<string> params, SymbolTable &sTable, State &state)
 	if ((dststr = (char *)sTable.getSymbol(params[1], DT_STRING)) != NULL)
 		str = string(dststr);
 	// source
-	int num; // reqd by getunknown
 	int dataType;
 	char *data;
 	for (UINT i = 2; i < params.size(); i++)
 	{
-		dataType = DT_NUMBER | DT_STRING | DT_BYTEARRAY;
-		GETUNKNOWN(params[i], data, num, dataType);
+		data = (char *)sTable.getSymbol(params[i], &dataType);
+		// check if it is a symbol
+		if (data != NULL)
+		{
+			// check if requested data type
+			if (!(dataType & (DT_NUMBER | DT_STRING | DT_BYTEARRAY)))
+			{
+				log("Invalid data type : %s", params[i].c_str());
+				return FALSE;
+			}
+		}
+		else
+		{
+			//treat as string literal
+			data = (char *)params[i].c_str();
+			dataType = DT_STRING;
+		}
 
 		// append to the destination string
 		str.append(sTable.toString(data, dataType));

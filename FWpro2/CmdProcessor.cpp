@@ -491,5 +491,7 @@ unordered_map<string, CmdFxn> CmdProcessor::fcnDispatch({
 	{ "add2csv",	&cf_add2csv},		// csv file string/symbol, key string, value number/string/symbol ...(multiple key-value pairs)
 	{ "replacecsv",	&cf_replacecsv},	// same as add2csv (replaces if k/v already exists)
 	{ "findcsv",    &cf_findcsv},		// csv file string/symbol, key to find string, value to find number/string/symbol, key to read string, dest symbol
-	{ "add2str",	&cf_add2str}		// dest symbol, src number/string/byteArray symbol ...
+	{ "add2str",	&cf_add2str},		// dest symbol, src number/string/byteArray symbol ...
+	{ "num2byte",	&cf_num2byte},		// dest symbol, src number/symbol, number of bytes number/symbol, lsb/msb
+	{ "str2byte",	&cf_str2byte}		// dest symbol, src string/symbol
 });

@@ -23,3 +23,5 @@ BOOL cf_add2csv(vector<string> params, SymbolTable &sTable, State &state);
 BOOL cf_replacecsv(vector<string> params, SymbolTable &sTable, State &state);
 BOOL cf_findcsv(vector<string> params, SymbolTable &sTable, State &state);
 BOOL cf_add2str(vector<string> params, SymbolTable &sTable, State &state);
+BOOL cf_num2byte(vector<string> params, SymbolTable &sTable, State &state);
+BOOL cf_str2byte(vector<string> params, SymbolTable &sTable, State &state);

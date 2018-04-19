@@ -656,3 +656,59 @@ BOOL cf_add2str(vector<string> params, SymbolTable &sTable, State &state)
 	memcpy(dststr, str.c_str(), str.length() + 1);
 	return TRUE;
 }
+
+BOOL cf_num2byte(vector<string> params, SymbolTable &sTable, State &state)
+{
+	CHECK_ARG_COUNT(4);
+	// source
+	int src;
+	GETNUMBER(params[2], src);
+	// number of bytes
+	int nob;
+	GETNUMBER(params[3], nob);
+	// destination
+	char *ba = (char *)sTable.newSymbol(params[1], DT_BYTEARRAY, nob);
+	// msb/lsb
+	BOOL msb = FALSE;
+	if (params[4] == "msb") msb = TRUE;
+	else if (params[4] != "lsb")
+	{
+		log("Invalid argument : %s", params[4].c_str());
+		return FALSE;
+	}
+
+	UINT num = (UINT)src;
+	if (msb)
+	{
+		for (UINT i = nob; i > 0; i--)
+		{
+			ba[i - 1] = num & 0xFF;
+			num >>= 8;
+		}
+	}
+	else
+	{
+		for (UINT i = 0; i < nob; i++)
+		{
+			ba[i] = num & 0xFF;
+			num >>= 8;
+		}
+	}
+	
+	log("Converted %s to a byte array", params[2].c_str());
+	return TRUE;
+}
+
+BOOL cf_str2byte(vector<string> params, SymbolTable &sTable, State &state)
+{
+	CHECK_ARG_COUNT(2);
+	// source
+	char *src;
+	GETCHARPTR(params[2], src, DT_STRING);
+	// destination
+	char *ba = (char *)sTable.newSymbol(params[1], DT_BYTEARRAY, strlen(src));
+
+	memcpy(ba, src, strlen(src));
+	log("Converted %s to a byte array", params[2].c_str());
+	return TRUE;
+}

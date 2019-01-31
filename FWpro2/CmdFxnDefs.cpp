@@ -712,3 +712,32 @@ BOOL cf_str2byte(vector<string> params, SymbolTable &sTable, State &state)
 	log("Converted %s to a byte array", params[2].c_str());
 	return TRUE;
 }
+
+BOOL cf_hexstr2byte(vector<string> params, SymbolTable &sTable, State &state)
+{
+	CHECK_ARG_COUNT(2);
+	// source
+	char *src;
+	GETCHARPTR(params[2], src, DT_STRING);
+
+	string hexstr = string(src);
+	UINT len = hexstr.size();
+	if (len % 2 != 0)
+	{
+		log("Invalid hex string length : %s", params[2].c_str());
+		return FALSE;
+	}
+	if (hexstr.find_first_not_of("0123456789aAbBcCdDeEfF") != string::npos)
+	{
+		log("Invalid character in hex string : %s", params[2].c_str());
+		return FALSE;
+	}
+	// destination
+	char *ba = (char *)sTable.newSymbol(params[1], DT_BYTEARRAY, len / 2);
+	for (UINT i = 0; i < len; i += 2)
+		*ba++ = (char)strtol(hexstr.substr(i, 2).c_str(), NULL, 16);
+
+
+	log("Converted %s to a byte array", params[2].c_str());
+	return TRUE;
+}

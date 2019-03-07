@@ -6,6 +6,8 @@
 #include "Log.h"
 using namespace std;
 
+extern HWND hWnd;
+
 CmdProcessor::CmdProcessor(void)
 {
 	// init state variables
@@ -416,7 +418,7 @@ start:
 	if (SetFilePointer(hScript, scriptOffset, NULL, FILE_BEGIN) == INVALID_SET_FILE_POINTER)
 	{
 		logE("Unable to find the first command");
-		return;
+		goto error;
 	}	
 	log("Running...");
 	while (state == State::run)
@@ -424,7 +426,7 @@ start:
 		// read next line
 		cmdlets = scriptNxtLine();
 		// error
-		if (cmdlets == (vector<string>)NULL) return;
+		if (cmdlets == (vector<string>)NULL) goto error;
 		// end of commands
 		if (cmdlets[0] == "end")
 		{
@@ -440,7 +442,7 @@ start:
 				if (hTimer == NULL || !SetWaitableTimer(hTimer, (LARGE_INTEGER *)&delay, 0, NULL, NULL, 0))
 				{
 					logE("Failed to set waitable timer");
-					return;
+					goto error;
 				}
 				while(WaitForSingleObject(hTimer, 10) == WAIT_TIMEOUT)
 				{
@@ -448,7 +450,12 @@ start:
 				}
 				goto start;
 			}
-			else return;
+			else
+			{
+				// display success dialog
+				MessageBox(hWnd, "Task successfully completed!", "FWpro2", MB_OK | MB_TASKMODAL | MB_ICONINFORMATION);
+				return;
+			}
 		}
 		// loop directive
 		if (cmdlets[0] == "loop")
@@ -461,15 +468,22 @@ start:
 		{
 			if (!(*fcnDispatch.at(cmdlets[0]))(cmdlets, sTable, state))
 			{
-				if (loopOnError) goto do_loop; else return;
+				if (loopOnError && _loop) goto do_loop; 
+				else
+				{					
+					goto error;
+				}
 			}
 		}
 		catch(out_of_range oor)
 		{
 			log("Unknown command: %s",cmdlets[0].c_str());
-			return;
+			goto error;
 		}
 	}	
+error:
+	// display error dialog
+	MessageBox(hWnd, "Task failed!", "FWpro2", MB_OK | MB_TASKMODAL | MB_ICONERROR);
 }
 
 unordered_map<string, CmdFxn> CmdProcessor::fcnDispatch({
